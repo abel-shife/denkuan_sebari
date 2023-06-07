@@ -44,6 +44,8 @@ class _CameraScreenState extends State<CameraScreen>
   //to store the retrived files
   List<File> allFileList = [];
 
+  List<Map<String, dynamic>> fileData = [];
+
   File? _imageFile;
 
   bool loading = false;
@@ -370,26 +372,12 @@ class _CameraScreenState extends State<CameraScreen>
                     )),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: allFileList.length,
+                    itemCount: fileData.length,
                     scrollDirection: Axis.horizontal,
                     itemBuilder: (context, index) {
-                      File image = allFileList[index];
-
-                      return Container(
-                          width: 100.w,
-                          margin: EdgeInsets.symmetric(
-                              vertical: 5.h, horizontal: 5.w),
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(5.0),
-                            border: Border.all(color: Colors.white, width: 1.r),
-                            image: image != null
-                                ? DecorationImage(
-                                    image: FileImage(image!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          ));
+                      Map<String, dynamic> image = fileData[index];
+                      return imageBuilder(
+                          image['imagePath'], image['isRemote']);
                     },
                   ),
                 )
@@ -483,6 +471,9 @@ class _CameraScreenState extends State<CameraScreen>
     });
 
     allFileList = allFileList.reversed.toList();
+    for (File file in allFileList) {
+      fileData.add({'imagePath': file.path, 'isRemote': false});
+    }
 
     if (fileNames.isNotEmpty) {
       final recentFile =
@@ -526,13 +517,43 @@ class _CameraScreenState extends State<CameraScreen>
     } catch (_) {}
   }
 
-  void subscribeToServer() {
-    IO.Socket socket = IO.io('http://192.168.3.9:3000');
-    socket.on('newPhoto', (data){
-      print('on-newPhoto');
-      print(data);
-    });
-    socket.onDisconnect((_) => print('disconnect'));
-    socket.on('fromServer', (_) => print(_));
+  void subscribeToServer() async {
+    print('subscribing');
+    try {
+      IO.Socket socket = IO.io('http://192.168.3.9:3000', {
+        'autoConnect': true,
+        'transports': ['websocket']
+      });
+      socket.connect();
+      socket.onConnect((_) {
+        print('connected to the server');
+      });
+      socket.on('newPhoto', (data) {
+        print(data);
+        setState(() {
+          fileData.insert(0, {'imagePath': data, 'isRemote': true});
+        });
+      });
+      socket.onDisconnect((_) => print('disconnect'));
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Widget imageBuilder(String filePath, bool isRemote) {
+    return Container(
+      width: 100.w,
+      margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 5.w),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(5.0),
+        border: Border.all(color: Colors.white, width: 1.r),
+        // image: DecorationImage(
+        //   image:  isRemote ? NetworkImage(filePath): FileImage(File(filePath)),
+        //   fit: BoxFit.cover,
+        // )
+      ),
+      child: isRemote ? Image.network(filePath) : Image.file(File(filePath)),
+    );
   }
 }
