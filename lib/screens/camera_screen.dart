@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:denkuan_sebari/config/Consts.dart';
+import 'package:denkuan_sebari/screens/loader_scree.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,6 +10,8 @@ import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:lottie/lottie.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:http/http.dart' as http;
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({Key? key}) : super(key: key);
@@ -43,13 +46,14 @@ class _CameraScreenState extends State<CameraScreen>
 
   File? _imageFile;
 
-  bool loading=false;
+  bool loading = false;
 
   @override
   void initState() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     onNewCameraSelected(cameras[_isRearCameraSelected]);
     refreshAlreadyCapturedImages();
+    subscribeToServer();
     super.initState();
   }
 
@@ -168,31 +172,11 @@ class _CameraScreenState extends State<CameraScreen>
                                     InkWell(
                                       onTap: () async {
                                         setState(() {
-                                          loading=true;
+                                          loading = true;
                                         });
-                                        XFile? rawImage = await takePicture();
-                                        File imageFile = File(rawImage!.path);
-                                        int currentUnix = DateTime.now()
-                                            .millisecondsSinceEpoch;
-                                        final Directory directory =
-                                            await getApplicationDocumentsDirectory();
-                                        String fileFormat =
-                                            imageFile.path.split('.').last;
-
-                                        await imageFile.copy(
-                                            '${directory.path}/$currentUnix.$fileFormat');
-                                        File file = File('${directory.path}/$currentUnix.$fileFormat');
-
+                                        processPicture();
                                         setState(() {
-                                          _imageFile = file;
-                                          allFileList.insert(0, file);
-                                        });
-
-                                        await ImageGallerySaver.saveFile(
-                                            imageFile.path,
-                                            name: '$currentUnix.$fileFormat');
-                                        setState(() {
-                                          loading=false;
+                                          loading = false;
                                         });
                                       },
                                       child: Stack(
@@ -203,7 +187,10 @@ class _CameraScreenState extends State<CameraScreen>
                                               size: 80.h),
                                           Icon(Icons.circle,
                                               color: Colors.white, size: 65.h),
-                                          loading? const CircularProgressIndicator(color: Colors.black12): const SizedBox.shrink()
+                                          loading
+                                              ? const CircularProgressIndicator(
+                                                  color: Colors.black12)
+                                              : const SizedBox.shrink()
                                         ],
                                       ),
                                     ),
@@ -408,14 +395,14 @@ class _CameraScreenState extends State<CameraScreen>
                 )
               ],
             )
-          :
-      Container(color: Colors.white, child: Center(child: Lottie.asset('assets/lotties/loading.json', height: 150.h))),
+          : const LoaderScreen(),
     );
   }
 
   onNewCameraSelected(CameraDescription cameraDescription) async {
     final previousCameraController = controller;
-    _currentFlashMode = controller!=null? controller!.value.flashMode: FlashMode.off;
+    _currentFlashMode =
+        controller != null ? controller!.value.flashMode : FlashMode.off;
     final CameraController cameraController = CameraController(
         cameraDescription, currentResolutionPreset,
         imageFormatGroup: ImageFormatGroup.jpeg);
@@ -495,6 +482,8 @@ class _CameraScreenState extends State<CameraScreen>
       }
     });
 
+    allFileList = allFileList.reversed.toList();
+
     if (fileNames.isNotEmpty) {
       final recentFile =
           fileNames.reduce((curr, next) => curr[0] > next[0] ? curr : next);
@@ -503,5 +492,47 @@ class _CameraScreenState extends State<CameraScreen>
         _imageFile = File('${directory.path}/$recentFileName');
       });
     }
+  }
+
+  void processPicture() async {
+    XFile? rawImage = await takePicture();
+    File imageFile = File(rawImage!.path);
+    int currentUnix = DateTime.now().millisecondsSinceEpoch;
+    final Directory directory = await getApplicationDocumentsDirectory();
+    String fileFormat = imageFile.path.split('.').last;
+
+    await imageFile.copy('${directory.path}/$currentUnix.$fileFormat');
+    File file = File('${directory.path}/$currentUnix.$fileFormat');
+
+    _imageFile = file;
+    allFileList.insert(0, file);
+    await sendImageToServer(file);
+    await ImageGallerySaver.saveFile(imageFile.path,
+        name: '$currentUnix.$fileFormat');
+  }
+
+  sendImageToServer(File file) async {
+    try {
+      var request = http.MultipartRequest(
+          'POST', Uri.parse('http://192.168.3.9:3000/upload'));
+      request.files.add(await http.MultipartFile.fromPath('photo', file.path));
+
+      http.StreamedResponse response = await request.send();
+      if (response.statusCode == 200) {
+        print(await response.stream.bytesToString());
+      } else {
+        print(response.reasonPhrase);
+      }
+    } catch (_) {}
+  }
+
+  void subscribeToServer() {
+    IO.Socket socket = IO.io('http://192.168.3.9:3000');
+    socket.on('newPhoto', (data){
+      print('on-newPhoto');
+      print(data);
+    });
+    socket.onDisconnect((_) => print('disconnect'));
+    socket.on('fromServer', (_) => print(_));
   }
 }
