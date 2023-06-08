@@ -491,9 +491,6 @@ class _CameraScreenState extends State<CameraScreen>
     });
 
     allFileList = allFileList.reversed.toList();
-    for (File file in allFileList) {
-      fileData.add({'imagePath': file.path, 'isRemote': false});
-    }
 
     if (fileNames.isNotEmpty) {
       final recentFile =
@@ -529,7 +526,7 @@ class _CameraScreenState extends State<CameraScreen>
   sendImageToServer(File file) async {
     try {
       var request = http.MultipartRequest(
-          'POST', Uri.parse('http://192.168.45.206:3000/upload'));
+          'POST', Uri.parse('http://192.168.45.109:3000/upload'));
       request.files.add(await http.MultipartFile.fromPath('photo', file.path));
 
       http.StreamedResponse response = await request.send();
@@ -544,7 +541,7 @@ class _CameraScreenState extends State<CameraScreen>
   void subscribeToServer() async {
     print('subscribing');
     try {
-      IO.Socket socket = IO.io('http://192.168.45.206:3000', {
+      IO.Socket socket = IO.io('http://192.168.45.109:3000', {
         'autoConnect': true,
         'transports': ['websocket']
       });

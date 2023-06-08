@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:denkuan_sebari/config/Consts.dart';
+import 'package:denkuan_sebari/config/app_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -27,13 +28,13 @@ class MyApp extends StatelessWidget {
         minTextAdapt: true,
         builder: (context, child) {
           return GetMaterialApp(
-            title: 'Denkuan Sebari',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              primarySwatch: Colors.blue,
-            ),
-            home: const CameraScreen(),
-          );
+              title: 'Denkuan Sebari',
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                primarySwatch: Colors.blue,
+              ),
+              initialRoute: Routes.initPage,
+              getPages: AppPages.pages);
         });
   }
 }

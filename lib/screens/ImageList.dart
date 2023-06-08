@@ -95,7 +95,7 @@ class _ImageListState extends State<ImageList> {
   void subscribeToServer() async {
     print('subscribing');
     try {
-      IO.Socket socket = IO.io('http://192.168.45.206:3000', {
+      IO.Socket socket = IO.io('http://192.168.45.109:3000', {
         'autoConnect': true,
         'transports': ['websocket']
       });
