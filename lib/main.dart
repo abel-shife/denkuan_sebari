@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:denkuan_sebari/config/Consts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get_navigation/src/root/get_material_app.dart';
 
 import 'screens/camera_screen.dart';
 
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         designSize: const Size(360, 690),
         minTextAdapt: true,
         builder: (context, child) {
-          return MaterialApp(
+          return GetMaterialApp(
             title: 'Denkuan Sebari',
             debugShowCheckedModeBanner: false,
             theme: ThemeData(

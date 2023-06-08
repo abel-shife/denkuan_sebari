@@ -6,12 +6,14 @@ import 'package:denkuan_sebari/screens/loader_scree.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:lottie/lottie.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:http/http.dart' as http;
+
+import '../widgets/image_builder.dart';
+import 'ImageList.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({Key? key}) : super(key: key);
@@ -50,9 +52,14 @@ class _CameraScreenState extends State<CameraScreen>
 
   bool loading = false;
 
+  late ScrollController listViewController;
+
+  bool isReceiving = false;
+
   @override
   void initState() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    listViewController = ScrollController();
     onNewCameraSelected(cameras[_isRearCameraSelected]);
     refreshAlreadyCapturedImages();
     subscribeToServer();
@@ -62,6 +69,7 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   void dispose() {
     controller?.dispose();
+    listViewController.dispose();
     super.dispose();
   }
 
@@ -86,303 +94,315 @@ class _CameraScreenState extends State<CameraScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       body: _isCameraInitialized
-          ? Column(
-              children: [
-                AspectRatio(
-                    aspectRatio: 1 / controller!.value.aspectRatio,
-                    child: Stack(
-                      children: [
-                        controller!.buildPreview(),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 15.w),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                        child: Slider(
-                                      value: _currentZoomLevel,
-                                      min: _minAvailableZoom,
-                                      max: _maxAvailableZoom,
-                                      activeColor: Colors.white,
-                                      inactiveColor: Colors.white30,
-                                      onChanged: (value) async {
-                                        setState(() {
-                                          _currentZoomLevel = value;
-                                        });
-                                        await controller!
-                                            .setZoomLevel(_currentZoomLevel);
-                                      },
-                                    )),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                          color: Colors.black87,
-                                          borderRadius:
-                                              BorderRadius.circular(5.r)),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 3.w, vertical: 3.h),
-                                      child: Text(
-                                        '${_currentZoomLevel.toStringAsFixed(1)}x',
-                                        style: const TextStyle(
-                                            color: Colors.white),
-                                      ),
-                                    )
-                                  ],
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          _isCameraInitialized = false;
-                                        });
-                                        onNewCameraSelected(cameras[
-                                            _isRearCameraSelected == 0
-                                                ? 1
-                                                : 0]);
-                                        setState(() {
-                                          _isRearCameraSelected =
-                                              _isRearCameraSelected == 0
-                                                  ? 1
-                                                  : 0;
-                                        });
-                                      },
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.circle,
-                                            color: Colors.black38,
-                                            size: 60.h,
-                                          ),
-                                          Icon(
-                                              _isRearCameraSelected == 0
-                                                  ? Icons.camera_rear
-                                                  : Icons.camera_front,
-                                              color: Colors.white,
-                                              size: 30.h)
-                                        ],
-                                      ),
-                                    ),
-                                    InkWell(
-                                      onTap: () async {
-                                        setState(() {
-                                          loading = true;
-                                        });
-                                        processPicture();
-                                        setState(() {
-                                          loading = false;
-                                        });
-                                      },
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          Icon(Icons.circle,
-                                              color: Colors.white38,
-                                              size: 80.h),
-                                          Icon(Icons.circle,
-                                              color: Colors.white, size: 65.h),
-                                          loading
-                                              ? const CircularProgressIndicator(
-                                                  color: Colors.black12)
-                                              : const SizedBox.shrink()
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                        width: 60.r,
-                                        height: 60.r,
-                                        decoration: BoxDecoration(
-                                          color: Colors.black,
-                                          borderRadius:
-                                              BorderRadius.circular(10.0),
-                                          border: Border.all(
-                                              color: Colors.white, width: 1.r),
-                                          image: _imageFile != null
-                                              ? DecorationImage(
-                                                  image: FileImage(_imageFile!),
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : null,
-                                        ))
-                                  ],
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 120.h,
-                          child: SizedBox(
-                            height: 350.h,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10.w),
-                              child: Column(
+          ? PageView(
+        physics: const BouncingScrollPhysics(),
+        children: [
+          Column(
+            children: [
+              AspectRatio(
+                  aspectRatio: 1 / controller!.value.aspectRatio,
+                  child: Stack(
+                    children: [
+                      controller!.buildPreview(),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 15.w),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
                                 children: [
+                                  Expanded(
+                                      child: Slider(
+                                        value: _currentZoomLevel,
+                                        min: _minAvailableZoom,
+                                        max: _maxAvailableZoom,
+                                        activeColor: Colors.white,
+                                        inactiveColor: Colors.white30,
+                                        onChanged: (value) async {
+                                          setState(() {
+                                            _currentZoomLevel = value;
+                                          });
+                                          await controller!
+                                              .setZoomLevel(_currentZoomLevel);
+                                        },
+                                      )),
                                   Container(
                                     decoration: BoxDecoration(
                                         color: Colors.black87,
                                         borderRadius:
-                                            BorderRadius.circular(5.r)),
+                                        BorderRadius.circular(5.r)),
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 3.w, vertical: 3.h),
                                     child: Text(
-                                      '${_currentExposureOffset.toStringAsFixed(1)}x',
-                                      style:
-                                          const TextStyle(color: Colors.white),
+                                      '${_currentZoomLevel.toStringAsFixed(1)}x',
+                                      style: const TextStyle(
+                                          color: Colors.white),
                                     ),
-                                  ),
-                                  Expanded(
-                                      child: RotatedBox(
-                                    quarterTurns: 3,
-                                    child: Slider(
-                                      value: _currentExposureOffset,
-                                      min: _minAvailableExposureOffset,
-                                      max: _maxAvailableExposureOffset,
-                                      activeColor: Colors.white,
-                                      inactiveColor: Colors.white30,
-                                      onChanged: (value) async {
-                                        setState(() {
-                                          _currentExposureOffset = value;
-                                        });
-                                        await controller!.setExposureOffset(
-                                            _currentExposureOffset);
-                                      },
-                                    ),
-                                  )),
+                                  )
                                 ],
                               ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(vertical: 5.h),
-                          color: Colors.black38,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              InkWell(
-                                onTap: () async {
-                                  setState(() {
-                                    _currentFlashMode = FlashMode.off;
-                                  });
-                                  await controller!
-                                      .setFlashMode(_currentFlashMode!);
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: _currentFlashMode == FlashMode.off
-                                          ? Colors.white12
-                                          : null),
-                                  padding: EdgeInsets.all(15.r),
-                                  child: Icon(
-                                    Icons.flash_off,
-                                    color: _currentFlashMode == FlashMode.off
-                                        ? Colors.amber
-                                        : Colors.white,
+                              Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                                children: [
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _isCameraInitialized = false;
+                                      });
+                                      onNewCameraSelected(cameras[
+                                      _isRearCameraSelected == 0
+                                          ? 1
+                                          : 0]);
+                                      setState(() {
+                                        _isRearCameraSelected =
+                                        _isRearCameraSelected == 0
+                                            ? 1
+                                            : 0;
+                                      });
+                                    },
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.circle,
+                                          color: Colors.black38,
+                                          size: 60.h,
+                                        ),
+                                        Icon(
+                                            _isRearCameraSelected == 0
+                                                ? Icons.camera_rear
+                                                : Icons.camera_front,
+                                            color: Colors.white,
+                                            size: 30.h)
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () async {
-                                  setState(() {
-                                    _currentFlashMode = FlashMode.auto;
-                                  });
-                                  await controller!
-                                      .setFlashMode(_currentFlashMode!);
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: _currentFlashMode == FlashMode.auto
-                                          ? Colors.white12
-                                          : null),
-                                  padding: EdgeInsets.all(15.r),
-                                  child: Icon(
-                                    Icons.flash_auto,
-                                    color: _currentFlashMode == FlashMode.auto
-                                        ? Colors.amber
-                                        : Colors.white,
+                                  InkWell(
+                                    onTap: () async {
+                                      setState(() {
+                                        loading = true;
+                                      });
+                                      processPicture();
+                                      setState(() {
+                                        loading = false;
+                                      });
+                                    },
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Icon(Icons.circle,
+                                            color: Colors.white38,
+                                            size: 80.h),
+                                        Icon(Icons.circle,
+                                            color: Colors.white, size: 65.h),
+                                        loading
+                                            ? const CircularProgressIndicator(
+                                            color: Colors.black12)
+                                            : const SizedBox.shrink()
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () async {
-                                  setState(() {
-                                    _currentFlashMode = FlashMode.always;
-                                  });
-                                  await controller!
-                                      .setFlashMode(_currentFlashMode!);
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color:
-                                          _currentFlashMode == FlashMode.always
-                                              ? Colors.white12
-                                              : null),
-                                  padding: EdgeInsets.all(15.r),
-                                  child: Icon(
-                                    Icons.flash_on,
-                                    color: _currentFlashMode == FlashMode.always
-                                        ? Colors.amber
-                                        : Colors.white,
-                                  ),
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () async {
-                                  setState(() {
-                                    _currentFlashMode = FlashMode.torch;
-                                  });
-                                  await controller!.setFlashMode(
-                                    FlashMode.torch,
-                                  );
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color:
-                                          _currentFlashMode == FlashMode.torch
-                                              ? Colors.white12
-                                              : null),
-                                  padding: EdgeInsets.all(15.r),
-                                  child: Icon(
-                                    Icons.highlight,
-                                    color: _currentFlashMode == FlashMode.torch
-                                        ? Colors.amber
-                                        : Colors.white,
-                                  ),
-                                ),
-                              ),
+                                  Container(
+                                      width: 60.r,
+                                      height: 60.r,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black,
+                                        borderRadius:
+                                        BorderRadius.circular(10.0),
+                                        border: Border.all(
+                                            color: Colors.white, width: 1.r),
+                                        image: _imageFile != null
+                                            ? DecorationImage(
+                                          image: FileImage(_imageFile!),
+                                          fit: BoxFit.cover,
+                                        )
+                                            : null,
+                                      ))
+                                ],
+                              )
                             ],
                           ),
                         ),
-                      ],
-                    )),
-                Expanded(
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 120.h,
+                        child: SizedBox(
+                          height: 350.h,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w),
+                            child: Column(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                      color: Colors.black87,
+                                      borderRadius:
+                                      BorderRadius.circular(5.r)),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 3.w, vertical: 3.h),
+                                  child: Text(
+                                    '${_currentExposureOffset.toStringAsFixed(1)}x',
+                                    style:
+                                    const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                Expanded(
+                                    child: RotatedBox(
+                                      quarterTurns: 3,
+                                      child: Slider(
+                                        value: _currentExposureOffset,
+                                        min: _minAvailableExposureOffset,
+                                        max: _maxAvailableExposureOffset,
+                                        activeColor: Colors.white,
+                                        inactiveColor: Colors.white30,
+                                        onChanged: (value) async {
+                                          setState(() {
+                                            _currentExposureOffset = value;
+                                          });
+                                          await controller!.setExposureOffset(
+                                              _currentExposureOffset);
+                                        },
+                                      ),
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(vertical: 5.h),
+                        color: Colors.black38,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            InkWell(
+                              onTap: () async {
+                                setState(() {
+                                  _currentFlashMode = FlashMode.off;
+                                });
+                                await controller!
+                                    .setFlashMode(_currentFlashMode!);
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _currentFlashMode == FlashMode.off
+                                        ? Colors.white12
+                                        : null),
+                                padding: EdgeInsets.all(15.r),
+                                child: Icon(
+                                  Icons.flash_off,
+                                  color: _currentFlashMode == FlashMode.off
+                                      ? Colors.amber
+                                      : Colors.white,
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                setState(() {
+                                  _currentFlashMode = FlashMode.auto;
+                                });
+                                await controller!
+                                    .setFlashMode(_currentFlashMode!);
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _currentFlashMode == FlashMode.auto
+                                        ? Colors.white12
+                                        : null),
+                                padding: EdgeInsets.all(15.r),
+                                child: Icon(
+                                  Icons.flash_auto,
+                                  color: _currentFlashMode == FlashMode.auto
+                                      ? Colors.amber
+                                      : Colors.white,
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                setState(() {
+                                  _currentFlashMode = FlashMode.always;
+                                });
+                                await controller!
+                                    .setFlashMode(_currentFlashMode!);
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color:
+                                    _currentFlashMode == FlashMode.always
+                                        ? Colors.white12
+                                        : null),
+                                padding: EdgeInsets.all(15.r),
+                                child: Icon(
+                                  Icons.flash_on,
+                                  color: _currentFlashMode == FlashMode.always
+                                      ? Colors.amber
+                                      : Colors.white,
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                setState(() {
+                                  _currentFlashMode = FlashMode.torch;
+                                });
+                                await controller!.setFlashMode(
+                                  FlashMode.torch,
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color:
+                                    _currentFlashMode == FlashMode.torch
+                                        ? Colors.white12
+                                        : null),
+                                padding: EdgeInsets.all(15.r),
+                                child: Icon(
+                                  Icons.highlight,
+                                  color: _currentFlashMode == FlashMode.torch
+                                      ? Colors.amber
+                                      : Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )),
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  color: isReceiving ? Colors.deepPurple : Colors.transparent,
                   child: ListView.builder(
                     itemCount: fileData.length,
+                    controller: listViewController,
+                    physics: const BouncingScrollPhysics(),
                     scrollDirection: Axis.horizontal,
                     itemBuilder: (context, index) {
                       Map<String, dynamic> image = fileData[index];
-                      return imageBuilder(
-                          image['imagePath'], image['isRemote']);
+                      return ImageBuilder(
+                          imagePath: image['imagePath'], isRemote: image['isRemote']);
                     },
                   ),
-                )
-              ],
-            )
+                ),
+              )
+            ],
+          ),
+          ImageList(fileData: fileData)
+        ],
+      )
           : const LoaderScreen(),
     );
   }
@@ -497,6 +517,10 @@ class _CameraScreenState extends State<CameraScreen>
 
     _imageFile = file;
     allFileList.insert(0, file);
+    // fileData.insert(0, {'imagePath': file.path, 'isRemote': false});
+    setState(() {
+
+    });
     await sendImageToServer(file);
     await ImageGallerySaver.saveFile(imageFile.path,
         name: '$currentUnix.$fileFormat');
@@ -505,7 +529,7 @@ class _CameraScreenState extends State<CameraScreen>
   sendImageToServer(File file) async {
     try {
       var request = http.MultipartRequest(
-          'POST', Uri.parse('http://192.168.3.9:3000/upload'));
+          'POST', Uri.parse('http://192.168.45.206:3000/upload'));
       request.files.add(await http.MultipartFile.fromPath('photo', file.path));
 
       http.StreamedResponse response = await request.send();
@@ -520,7 +544,7 @@ class _CameraScreenState extends State<CameraScreen>
   void subscribeToServer() async {
     print('subscribing');
     try {
-      IO.Socket socket = IO.io('http://192.168.3.9:3000', {
+      IO.Socket socket = IO.io('http://192.168.45.206:3000', {
         'autoConnect': true,
         'transports': ['websocket']
       });
@@ -530,30 +554,23 @@ class _CameraScreenState extends State<CameraScreen>
       });
       socket.on('newPhoto', (data) {
         print(data);
-        setState(() {
-          fileData.insert(0, {'imagePath': data, 'isRemote': true});
+         setState(() {
+           fileData.insert(0, {'imagePath': data, 'isRemote': true});
+           isReceiving = true;
+           listViewController.animateTo(0.0,
+               duration: const Duration(milliseconds: 500),
+               curve: Curves.fastOutSlowIn);
+         });
+        Future.delayed(Duration(seconds: 1), () {
+          setState(() {
+            isReceiving = false;
+          });
         });
-      });
+        });
+
       socket.onDisconnect((_) => print('disconnect'));
     } catch (e) {
       print(e);
     }
-  }
-
-  Widget imageBuilder(String filePath, bool isRemote) {
-    return Container(
-      width: 100.w,
-      margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 5.w),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(5.0),
-        border: Border.all(color: Colors.white, width: 1.r),
-        // image: DecorationImage(
-        //   image:  isRemote ? NetworkImage(filePath): FileImage(File(filePath)),
-        //   fit: BoxFit.cover,
-        // )
-      ),
-      child: isRemote ? Image.network(filePath) : Image.file(File(filePath)),
-    );
   }
 }
