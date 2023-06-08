@@ -14,7 +14,7 @@ List<CameraDescription> cameras=[];
 //         currentResolutionPreset = value!;
 //         _isCameraInitialized = false;
 //       });
-//       onNewCameraSelected(controller!.description);
+//       onNewCameraSelected(controllers!.description);
 //     },
 //     value: currentResolutionPreset,
 //     underline: Container())
