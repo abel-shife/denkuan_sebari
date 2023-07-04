@@ -390,7 +390,7 @@ class _CameraScreenState extends State<CameraScreen>
               Expanded(
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 500),
-                  color: isReceiving ? Colors.deepPurple : Colors.transparent,
+                  color: isReceiving ? Colors.green : Colors.transparent,
                   child: ListView.builder(
                     itemCount: fileData.length,
                     controller: listViewController,

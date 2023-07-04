@@ -31,7 +31,19 @@ class MyApp extends StatelessWidget {
               title: 'Denkuan Sebari',
               debugShowCheckedModeBanner: false,
               theme: ThemeData(
-                primarySwatch: Colors.blue,
+                primarySwatch: const MaterialColor(0XFF115E37, {
+                  50: Color.fromRGBO(17, 94, 55, .1),
+                  100: Color.fromRGBO(17, 94, 55, .2),
+                  200: Color.fromRGBO(17, 94, 55, .3),
+                  300: Color.fromRGBO(17, 94, 55, .4),
+                  400: Color.fromRGBO(17, 94, 55, .5),
+                  500: Color.fromRGBO(17, 94, 55, .6),
+                  600: Color.fromRGBO(17, 94, 55, .7),
+                  700: Color.fromRGBO(17, 94, 55, .8),
+                  800: Color.fromRGBO(17, 94, 55, .9),
+                  900: Color.fromRGBO(17, 94, 55, 1),
+                }),
+                colorScheme: ColorScheme.fromSeed(seedColor: Color(0XFF115E37)),
               ),
               initialRoute: Routes.initPage,
               getPages: AppPages.pages);

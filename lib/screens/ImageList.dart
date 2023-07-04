@@ -46,10 +46,10 @@ class _ImageListState extends State<ImageList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurpleAccent.withOpacity(.3),
+      // backgroundColor: Colors.deepPurpleAccent.withOpacity(.3),
       appBar: AppBar(
         elevation: 0.0,
-        backgroundColor: Colors.deepPurpleAccent,
+        // backgroundColor: Colors.deepPurpleAccent,
         title: const Text('Denkuan Sebari'),
         centerTitle: true,
       ),
@@ -76,7 +76,7 @@ class _ImageListState extends State<ImageList> {
       floatingActionButton: Visibility(
         visible: !atTheTop,
         child: FloatingActionButton(
-          backgroundColor: Colors.deepPurple,
+          // backgroundColor: Colors.deepPurple,
           child: Padding(
             padding: EdgeInsets.only(top: 5.h),
             child: const RotatedBox(

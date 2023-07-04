@@ -38,10 +38,10 @@ class ImageBuilder extends StatelessWidget {
               alignment: Alignment.bottomRight,
               children: [
                 FloatingActionButton(
-                  backgroundColor: Colors.deepPurpleAccent.withOpacity(.4),
+                  // backgroundColor: Colors.deepPurpleAccent.withOpacity(.4),
                   mini: true,
                   elevation: 0.0,
-                  child: const Icon(Icons.download, color: Colors.deepPurpleAccent),
+                  child: const Icon(Icons.download),
                   onPressed: () async {
                     var response = await http.get(Uri.parse(imagePath));
                     final bytes = response.bodyBytes;
@@ -54,7 +54,7 @@ class ImageBuilder extends StatelessWidget {
                           toastLength: Toast.LENGTH_SHORT,
                           gravity: ToastGravity.CENTER,
                           timeInSecForIosWeb: 1,
-                          backgroundColor: Colors.deepPurpleAccent,
+                          // backgroundColor: Colors.deepPurpleAccent,
                           textColor: Colors.white,
                           fontSize: 16.sp
                       );
