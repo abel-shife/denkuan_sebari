@@ -57,7 +57,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   bool isReceiving = false;
 
-  final PageController pageController=PageController(initialPage: 1);
+  final PageController pageController=PageController(initialPage: 0);
 
   @override
   void initState() {
