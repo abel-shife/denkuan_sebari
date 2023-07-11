@@ -2,7 +2,7 @@ import 'package:camera/camera.dart';
 
 List<CameraDescription> cameras = [];
 class Constants {
-   static String ipAddress = '';
+   static String? ipAddress;
 }
 
 // DropdownButton<ResolutionPreset>(

@@ -1,1 +1,1 @@
-enum ConnectivityStatus { not_connected, connected, connecting}
+// enum ConnectivityStatus { not_connected, connected, connecting}

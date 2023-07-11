@@ -31,7 +31,8 @@ class _CameraScreenState extends State<CameraScreen>
   bool _isCameraInitialized = false;
   List<ResolutionPreset> resolutionPresets = ResolutionPreset.values;
   ResolutionPreset currentResolutionPreset = ResolutionPreset.high;
-  ConnectivityStatus connectivityStatus = ConnectivityStatus.not_connected;
+
+  // ConnectivityStatus connectivityStatus = ConnectivityStatus.not_connected;
 
   //zoom
   double _minAvailableZoom = 1.0;
@@ -60,7 +61,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   bool isReceiving = false;
 
-  final PageController pageController = PageController(initialPage: 0);
+  final PageController pageController = PageController(initialPage: 1);
 
   @override
   void initState() {
@@ -95,7 +96,6 @@ class _CameraScreenState extends State<CameraScreen>
     }
     super.didChangeAppLifecycleState(state);
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +103,9 @@ class _CameraScreenState extends State<CameraScreen>
       body: _isCameraInitialized
           ? PageView(
               controller: pageController,
+              onPageChanged: (index) {
+                print('index' + index.toString());
+              },
               physics: const BouncingScrollPhysics(),
               children: [
                 Setting(),
@@ -405,8 +408,7 @@ class _CameraScreenState extends State<CameraScreen>
                                     child: Container(
                                       decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: connectivityStatus ==
-                                                  ConnectivityStatus.connected
+                                          color: Constants.ipAddress != null
                                               ? Get.theme.primaryColor
                                               : Colors.red.withOpacity(.5)),
                                       padding: EdgeInsets.all(10.r),
@@ -565,7 +567,7 @@ class _CameraScreenState extends State<CameraScreen>
   sendImageToServer(File file) async {
     try {
       var request = http.MultipartRequest(
-          'POST', Uri.parse('http://192.168.45.109:3000/upload'));
+          'POST', Uri.parse('${Constants.ipAddress}:8989/upload'));
       request.files.add(await http.MultipartFile.fromPath('photo', file.path));
 
       http.StreamedResponse response = await request.send();
@@ -579,34 +581,36 @@ class _CameraScreenState extends State<CameraScreen>
 
   void subscribeToServer() async {
     print('subscribing');
-    try {
-      IO.Socket socket = IO.io('http://192.168.45.109:3000', {
-        'autoConnect': true,
-        'transports': ['websocket']
-      });
-      socket.connect();
-      socket.onConnect((_) {
-        print('connected to the server');
-      });
-      socket.on('newPhoto', (data) {
-        print(data);
-        setState(() {
-          fileData.insert(0, {'imagePath': data, 'isRemote': true});
-          isReceiving = true;
-          listViewController.animateTo(0.0,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.fastOutSlowIn);
+    if (Constants.ipAddress != null) {
+      try {
+        IO.Socket socket = IO.io('${Constants.ipAddress}:8989', {
+          'autoConnect': true,
+          'transports': ['websocket']
         });
-        Future.delayed(Duration(seconds: 1), () {
+        socket.connect();
+        socket.onConnect((_) {
+          print('connected to the server');
+        });
+        socket.on('newPhoto', (data) {
+          print(data);
           setState(() {
-            isReceiving = false;
+            fileData.insert(0, {'imagePath': data, 'isRemote': true});
+            isReceiving = true;
+            listViewController.animateTo(0.0,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.fastOutSlowIn);
+          });
+          Future.delayed(Duration(seconds: 1), () {
+            setState(() {
+              isReceiving = false;
+            });
           });
         });
-      });
 
-      socket.onDisconnect((_) => print('disconnect'));
-    } catch (e) {
-      print(e);
+        socket.onDisconnect((_) => print('disconnect'));
+      } catch (e) {
+        print(e);
+      }
     }
   }
 }

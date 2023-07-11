@@ -29,15 +29,15 @@ class _SettingState extends State<Setting> {
   late FlipCardController _flipController;
   bool _currentFlashModeOn = false;
 
-  @override
-  void reassemble() {
-    if (Platform.isAndroid) {
-      qrController!.pauseCamera();
-    } else if (Platform.isIOS) {
-      qrController!.resumeCamera();
-    }
-    super.reassemble();
-  }
+  // @override
+  // void reassemble() {
+  //   if (Platform.isAndroid) {
+  //     qrController!.pauseCamera();
+  //   } else if (Platform.isIOS) {
+  //     qrController!.resumeCamera();
+  //   }
+  //   super.reassemble();
+  // }
 
   void _onQRViewCreated(QRViewController controller) {
     qrController = controller;
@@ -45,9 +45,10 @@ class _SettingState extends State<Setting> {
       setState(() {
         result = scanData;
         if (result != null) {
-          controller.pauseCamera();
+          // controller.pauseCamera();
           Constants.ipAddress = result!.code!;
           _flipController.toggleCard();
+          // qrController!.pauseCamera();
           setState(() {});
           print("resss" + result!.code.toString() + result!.format.toString());
         }
@@ -70,7 +71,9 @@ class _SettingState extends State<Setting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Get.theme.primaryColor,
+      backgroundColor: Constants.ipAddress == null
+          ? Color(0xffcccc00)
+          : Get.theme.primaryColor,
       body: Stack(
         children: [
           Column(
@@ -120,69 +123,92 @@ class _SettingState extends State<Setting> {
                                 height: 200.r,
                                 width: 200.r,
                                 child: FlipCard(
-                                  controller: _flipController,
-                                  direction: FlipDirection.HORIZONTAL,
-                                  side: CardSide.FRONT,
-                                  flipOnTouch: true,
-                                  back: Stack(
-                                    alignment: Alignment.topRight,
-                                    children: [
-                                      QRView(
-                                        key: qrKey,
-                                        onQRViewCreated: _onQRViewCreated,
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            qrController!.toggleFlash();
-                                            _currentFlashModeOn =
-                                                !_currentFlashModeOn;
-                                          });
-                                        },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: Colors.white54),
-                                          padding: EdgeInsets.all(8.r),
-                                          child: Icon(
-                                              _currentFlashModeOn
-                                                  ? Icons.flash_on
-                                                  : Icons.flash_off,
-                                              color: Colors.amber),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  front: QrImageView(
-                                    data: Constants.ipAddress,
-                                    version: QrVersions.auto,
-                                  ),
-                                ),
+                                    controller: _flipController,
+                                    direction: FlipDirection.HORIZONTAL,
+                                    side: CardSide.FRONT,
+                                    // flipOnTouch: true,
+                                    back: Constants.ipAddress != null
+                                        ? QrImageView(
+                                            data: Constants.ipAddress!,
+                                            version: QrVersions.auto,
+                                          )
+                                        : SizedBox.shrink(),
+                                    front: Constants.ipAddress != null
+                                        ? QrImageView(
+                                            data: Constants.ipAddress!,
+                                            version: QrVersions.auto,
+                                          )
+                                        : Stack(
+                                            alignment: Alignment.topRight,
+                                            children: [
+                                              QRView(
+                                                key: qrKey,
+                                                onQRViewCreated:
+                                                    _onQRViewCreated,
+                                              ),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    qrController!.toggleFlash();
+                                                    _currentFlashModeOn =
+                                                        !_currentFlashModeOn;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: Colors.white54),
+                                                  padding: EdgeInsets.all(8.r),
+                                                  child: Icon(
+                                                      _currentFlashModeOn
+                                                          ? Icons.flash_on
+                                                          : Icons.flash_off,
+                                                      color: Colors.amber),
+                                                ),
+                                              ),
+                                            ],
+                                          )),
                               ),
                             ),
                             CameraFocusHelper(),
                           ],
                         ),
                         SizedBox(height: 40.h),
-                        Text(ConnectivityStatus.connected.name),
+                        Text(Constants.ipAddress != null
+                            ? 'Connected'
+                            : 'Connecting'),
                         SizedBox(height: 5.h),
                         AvatarGlow(
-                          glowColor:  Get.theme.primaryColor,
+                          glowColor: Constants.ipAddress == null
+                              ? Color(0xffcccc00)
+                              : Get.theme.primaryColor,
                           endRadius: 100.r,
                           duration: Duration(milliseconds: 1000),
                           repeat: true,
+                          animate: Constants.ipAddress == null ? true : false,
                           showTwoGlows: true,
                           repeatPauseDuration: Duration(milliseconds: 100),
-                          child: MaterialButton(     // Replace this child with your own
+                          child: MaterialButton(
+                            // Replace this child with your own
                             elevation: 8.0,
                             height: 50.r,
-                            color: Get.theme.primaryColor,
-                            onPressed: (){},
+                            color: Constants.ipAddress == null
+                                ? Color(0xffcccc00)
+                                : Get.theme.primaryColor,
+                            onPressed: () {
+                              if(Constants.ipAddress!=null){
+                                setState(() {
+                                  Constants.ipAddress = null;
+                                });
+                              }
+                            },
                             shape: CircleBorder(),
-                            child: Icon(Icons.power_settings_new_outlined, color: Colors.white70,),
+                            child: Icon(
+                              Icons.power_settings_new_outlined,
+                              color: Colors.white70,
+                            ),
                           ),
                         ),
-
                       ],
                     ),
                   ),

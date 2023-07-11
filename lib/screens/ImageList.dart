@@ -1,3 +1,4 @@
+import 'package:denkuan_sebari/config/Consts.dart';
 import 'package:denkuan_sebari/widgets/image_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -95,7 +96,7 @@ class _ImageListState extends State<ImageList> {
   void subscribeToServer() async {
     print('subscribing');
     try {
-      IO.Socket socket = IO.io('http://192.168.45.109:3000', {
+      IO.Socket socket = IO.io('${Constants.ipAddress}:8989', {
         'autoConnect': true,
         'transports': ['websocket']
       });
